@@ -36,6 +36,7 @@ class NessusParser:
         self.latestHosts = set()
         self.previousResults = []
         self.previousHosts = set()
+        self.resultsDescription = []
         warning = ("Note:",
                    " False positives that were manually removed from current scan results are included in the table "
                    "below",)
@@ -55,6 +56,7 @@ class NessusParser:
         if self.args.new:
             self.latestResults = self.parser(self.args.new)
             self.write_sheet(self.latestResults, "Current scan results")
+            self.write_sheet(self.resultsDescription, "Description of results")
         else:
             self.workbook.close()
             print("No new csv files specified, so I'm not doing anything. Use -h to show some options")
@@ -114,6 +116,10 @@ class NessusParser:
                     result = (row[2:8])
                     if result not in temp_latest:
                         temp_latest.append(result)
+                    if row[3] != "None":
+                        description = tuple((str(row[7]), str(row[1]), str(row[9]), str(row[10])))
+                        if description not in self.resultsDescription:
+                            self.resultsDescription.append(description)
             for row in temp_latest:
                 result = tuple(row)
                 # If statement solely for the headers in order to split them correctly
