@@ -32,38 +32,38 @@ class NessusParser:
         # Parameters used for writing the results
         self.current_time = datetime.utcfromtimestamp(time.time()).strftime("%Y%m%d")
         self.workbook = xlsxwriter.Workbook("NessusResults_" + self.current_time + ".xlsx")
-        self.latestResults = []
-        self.latestHosts = set()
-        self.previousResults = []
-        self.previousHosts = set()
-        self.resultsDescription = []
+        self.latest_results = []
+        self.latest_hosts = set()
+        self.previous_results = []
+        self.previous_hosts = set()
+        self.results_description = []
         warning = ("Note:",
                    " False positives that were manually removed from current scan results are included in the table "
                    "below",)
         column = tuple(("CVSS", "Risk", "Host IP", "FQDN", "Additional DNS names", "Protocol", "Port", "Name"))
-        self.newResults = []
-        self.newResults.append(warning)
-        self.newResults.append(column)
-        self.fixedResults = []
-        self.fixedResults.append(warning)
-        self.fixedResults.append(column)
-        self.hostOverview = []
-        self.newHosts = []
-        self.disappearedHosts = []
+        self.new_results = []
+        self.new_results.append(warning)
+        self.new_results.append(column)
+        self.fixed_results = []
+        self.fixed_results.append(warning)
+        self.fixed_results.append(column)
+        self.host_overview = []
+        self.new_hosts = []
+        self.disappeared_hosts = []
 
     # Starts parsing the results
     def start_parsing(self):
         if self.args.new:
-            self.latestResults = self.parser(self.args.new)
-            self.write_sheet(self.latestResults, "Current scan results")
-            self.write_sheet(self.resultsDescription, "Description of results")
+            self.latest_results = self.parser(self.args.new)
+            self.write_sheet(self.latest_results, "Current scan results")
+            self.write_sheet(self.results_description, "Description of results")
         else:
             self.workbook.close()
             print("No new csv files specified, so I'm not doing anything. Use -h to show some options")
             exit()
         if self.args.old:
-            self.previousResults = self.parser(self.args.old)
-            self.write_sheet(self.previousResults, "Previous scan results")
+            self.previous_results = self.parser(self.args.old)
+            self.write_sheet(self.previous_results, "Previous scan results")
             self.compare()
             if self.args.check:
                 self.check()
@@ -75,9 +75,9 @@ class NessusParser:
                 previous_worksheet = previous_workbook.sheet_by_name("Current scan results")
                 while row_number < previous_worksheet.nrows:
                     row = previous_worksheet.row_values(row_number, 2, 10)
-                    self.previousResults.append(tuple(row))
+                    self.previous_results.append(tuple(row))
                     row_number += 1
-                self.write_sheet(self.previousResults, "Previous scan results")
+                self.write_sheet(self.previous_results, "Previous scan results")
                 self.compare()
                 if self.args.check:
                     self.check()
@@ -118,8 +118,8 @@ class NessusParser:
                         temp_latest.append(result)
                     if row[3] != "None":
                         description = tuple((str(row[7]), str(row[1]), str(row[9]), str(row[10])))
-                        if description not in self.resultsDescription:
-                            self.resultsDescription.append(description)
+                        if description not in self.results_description:
+                            self.results_description.append(description)
             for row in temp_latest:
                 result = tuple(row)
                 # If statement solely for the headers in order to split them correctly
@@ -135,29 +135,29 @@ class NessusParser:
 
     # Performs checks on the latest and previous scans to determine the deltas in regard to the found vulnerabilities
     def compare(self):
-        self.newResults.extend(set(tuple(self.latestResults)) - set(tuple(self.previousResults)))
-        self.fixedResults.extend((set(tuple(self.previousResults)) - set(tuple(self.latestResults))))
-        self.write_sheet(self.newResults, "New issues")
-        self.write_sheet(self.fixedResults, "Fixed issues")
+        self.new_results.extend(set(tuple(self.latest_results)) - set(tuple(self.previous_results)))
+        self.fixed_results.extend((set(tuple(self.previous_results)) - set(tuple(self.latest_results))))
+        self.write_sheet(self.new_results, "New issues")
+        self.write_sheet(self.fixed_results, "Fixed issues")
 
     # Performs checks on the latest and previous scans to determine the deltas in regard to the number of hosts
     def check(self):
         temp_new = set()
         temp_old = set()
-        for result in self.latestResults:
+        for result in self.latest_results:
             temp_new.add((result[2], result[3], result[4]))
             host_overview = (result[2], result[3], result[4])
-            if host_overview not in self.hostOverview:
-                self.hostOverview.append(host_overview)
-        for result in self.previousResults:
+            if host_overview not in self.host_overview:
+                self.host_overview.append(host_overview)
+        for result in self.previous_results:
             temp_old.add((result[2], result[3], result[4]))
-        self.newHosts.append(("Host IP", "FQDN", "Additional DNS names"))
-        self.newHosts.extend((set(tuple(temp_new)) - set(tuple(temp_old))))
-        self.disappearedHosts.append(("Host IP", "FQDN", "Additional DNS names"))
-        self.disappearedHosts.extend((set(tuple(temp_old)) - set(tuple(temp_new))))
-        self.write_sheet(self.hostOverview, "Host overview")
-        self.write_sheet(self.newHosts, "New hosts")
-        self.write_sheet(self.disappearedHosts, "Disappeared hosts")
+        self.new_hosts.append(("Host IP", "FQDN", "Additional DNS names"))
+        self.new_hosts.extend((set(tuple(temp_new)) - set(tuple(temp_old))))
+        self.disappeared_hosts.append(("Host IP", "FQDN", "Additional DNS names"))
+        self.disappeared_hosts.extend((set(tuple(temp_old)) - set(tuple(temp_new))))
+        self.write_sheet(self.host_overview, "Host overview")
+        self.write_sheet(self.new_hosts, "New hosts")
+        self.write_sheet(self.disappeared_hosts, "Disappeared hosts")
 
         # Writes sheet
 
